@@ -1,6 +1,7 @@
 extends CharacterBody2D
 
 signal enemy_died(name)
+signal hp_changed(current, maximum)
 
 @export var speed: float = 80.0
 @export var max_hp: int = 80
@@ -39,6 +40,10 @@ func _physics_process(delta: float) -> void:
 
 func take_damage(amount: int, source: String = "") -> void:
     hp -= amount
+    if hp < 0:
+        hp = 0
+    if has_signal("hp_changed"):
+        emit_signal("hp_changed", hp, max_hp)
     if hp <= 0:
         die()
 

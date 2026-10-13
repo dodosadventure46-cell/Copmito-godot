@@ -9,6 +9,10 @@ var hp: int = max_hp
 
 var attack_cooldown: float = 0.5
 var attack_timer: float = 0.0
+var base_damage: int = 10
+var has_sword: bool = false
+var weapon_name: String = "Fists"
+var weapon_damage: int = 10
 
 func _ready() -> void:
     add_to_group("player")
@@ -21,7 +25,9 @@ func _physics_process(delta: float) -> void:
     var input_dir := Vector2(
         Input.get_action_strength("ui_right") - Input.get_action_strength("ui_left"),
         Input.get_action_strength("ui_down") - Input.get_action_strength("ui_up")
-    ).normalized()
+    )
+    if input_dir.length() > 0:
+        input_dir = input_dir.normalized()
 
     velocity = input_dir * speed
     move_and_slide()
@@ -32,12 +38,26 @@ func _physics_process(delta: float) -> void:
         perform_attack()
 
 func perform_attack() -> void:
+    var damage := weapon_damage if has_sword else base_damage
     var radius := 48.0
+    # Simple melee: damage all enemies in radius
     for en in get_tree().get_nodes_in_group("enemies"):
         if en and en.is_inside_tree():
             if en.global_position.distance_to(global_position) <= radius:
                 if en.has_method("take_damage"):
-                    en.call("take_damage", 34, "Player")
+                    en.call("take_damage", damage, "Player")
+
+func equip_weapon(name: String, damage: int) -> void:
+    has_sword = true
+    weapon_name = name
+    weapon_damage = damage
+    var lbl := Label.new()
+    lbl.text = "Equipped: %s" % weapon_name
+    lbl.add_theme_font_size_override("font_size", 16)
+    lbl.position = global_position + Vector2(-24, -40)
+    get_tree().current_scene.add_child(lbl)
+    await get_tree().create_timer(1.5).timeout
+    lbl.queue_free()
 
 func take_damage(amount: int, source: String = "") -> void:
     hp = max(0, hp - amount)

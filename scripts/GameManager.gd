@@ -1,18 +1,20 @@
 extends Node2D
 
-# Game Manager: sets up a simple top-down isekai RPG starter scene.
-# Responsibilities:
-# - Instantiate Player, Enemies (including Demon King boss), and NPCs
-# - Track quest progress and basic rules
-# - Provide hooks for testing and bug reporting
+# Game Manager: quest, dialog, boss HP bar, sword pickup
 
 const PLAYER_SCENE := preload("res://scripts/Player.gd")
 const ENEMY_SCENE := preload("res://scripts/Enemy.gd")
 const NPC_SCENE := preload("res://scripts/NPC.gd")
+const SWORD_SCENE := preload("res://scripts/Sword.gd")
+const DIALOG_SCENE := preload("res://scripts/DialogManager.gd")
 
 var player: CharacterBody2D
 var score_label: Label
 var demon_king_defeated: bool = false
+var boss_bar_bg: ColorRect
+var boss_bar_fill: ColorRect
+var boss_label: Label
+var dialog_manager: Node
 
 func _ready() -> void:
     score_label = $HUD/LabelScore
@@ -20,6 +22,8 @@ func _ready() -> void:
     setup_player()
     setup_enemies()
     setup_npcs()
+    setup_dialog_manager()
+    create_sword_item()
     update_hud()
 
 func setup_world() -> void:
@@ -60,10 +64,13 @@ func setup_enemies() -> void:
     boss.add_to_group("enemies")
     add_child(boss)
 
-    # Connect enemy death signals
+    # Connect enemy signals
     for enemy in get_tree().get_nodes_in_group("enemies"):
-        if enemy.has_method("connect"):
-            enemy.connect("enemy_died", Callable(self, "_on_enemy_died"))
+        if enemy and enemy.has_method("connect"):
+            if enemy.name == "DemonKing" and enemy.has_signal("hp_changed"):
+                enemy.connect("hp_changed", Callable(self, "_on_boss_hp_changed"))
+            if enemy.has_signal("enemy_died"):
+                enemy.connect("enemy_died", Callable(self, "_on_enemy_died"))
 
 func setup_npcs() -> void:
     var npc := Node2D.new()
@@ -73,22 +80,76 @@ func setup_npcs() -> void:
     npc.set_script(script)
     add_child(npc)
 
+func setup_dialog_manager() -> void:
+    dialog_manager = DIALOG_SCENE.new()
+    add_child(dialog_manager)
+
+func create_sword_item() -> void:
+    var world := $World
+    var sword := Area2D.new()
+    sword.name = "SwordItem"
+    sword.position = Vector2(300, 520)
+    sword.set_script(SWORD_SCENE)
+
+    var collision := CollisionShape2D.new()
+    var shape := CircleShape2D.new()
+    shape.radius = 12
+    collision.shape = shape
+    sword.add_child(collision)
+
+    var sprite := Sprite2D.new()
+    sprite.texture = load("res://assets/sword.svg")
+    sprite.position = Vector2(-16, -16)
+    sword.add_child(sprite)
+
+    world.add_child(sword)
+
 func _on_enemy_died(enemy_name: String) -> void:
     if enemy_name == "DemonKing":
         demon_king_defeated = true
         update_hud()
-        show_message("You defeated the Demon King! Quest complete.")
+        if dialog_manager and dialog_manager.has_method("show"):
+            dialog_manager.call("show", "You defeated the Demon King! Quest complete.")
 
 func _on_player_hp_changed(new_hp: int) -> void:
     update_hud()
 
 func _on_player_died() -> void:
-    show_message("You died. Press R to restart.")
+    if dialog_manager and dialog_manager.has_method("show"):
+        dialog_manager.call("show", "You died. Press R to restart.")
 
 func update_hud() -> void:
     var hp := player.hp if player and player.is_inside_tree() else 0
     var quest := "Defeated" if demon_king_defeated else "Defeat Demon King"
     score_label.text = "HP: %d | Quest: %s" % [hp, quest]
+
+# Boss HP bar handling
+func _on_boss_hp_changed(current: int, maximum: int) -> void:
+    if not boss_bar_bg:
+        _create_boss_bar()
+    var ratio := 0.0
+    if maximum > 0:
+        ratio = float(current) / float(maximum)
+    boss_bar_fill.size = Vector2(280 * ratio, boss_bar_fill.size.y)
+    boss_label.text = "Demon King HP: %d / %d" % [current, maximum]
+
+func _create_boss_bar() -> void:
+    boss_bar_bg = ColorRect.new()
+    boss_bar_bg.color = Color(0.07, 0.07, 0.07, 0.9)
+    boss_bar_bg.position = Vector2(20, 60)
+    boss_bar_bg.size = Vector2(300, 28)
+
+    boss_bar_fill = ColorRect.new()
+    boss_bar_fill.color = Color(0.82, 0.07, 0.07, 1.0)
+    boss_bar_fill.position = Vector2(10, 6)
+    boss_bar_fill.size = Vector2(280, 16)
+    boss_bar_bg.add_child(boss_bar_fill)
+
+    boss_label = Label.new()
+    boss_label.position = Vector2(20, 36)
+    boss_label.add_theme_font_size_override("font_size", 14)
+    add_child(boss_bar_bg)
+    add_child(boss_label)
 
 func show_message(text: String) -> void:
     var dlg := Label.new()
