@@ -12,6 +12,10 @@ var attack_timer: float = 0.0
 
 func _ready() -> void:
     add_to_group("player")
+    var sprite := Sprite2D.new()
+    sprite.texture = load("res://assets/player.svg")
+    sprite.position = Vector2(-16, -16)
+    add_child(sprite)
 
 func _physics_process(delta: float) -> void:
     var input_dir := Vector2(
@@ -28,7 +32,6 @@ func _physics_process(delta: float) -> void:
         perform_attack()
 
 func perform_attack() -> void:
-    # Simple melee attack: check nearby enemies within radius
     var radius := 48.0
     for en in get_tree().get_nodes_in_group("enemies"):
         if en and en.is_inside_tree():
@@ -41,4 +44,3 @@ func take_damage(amount: int, source: String = "") -> void:
     emit_signal("hp_changed", hp)
     if hp <= 0:
         emit_signal("player_died")
-

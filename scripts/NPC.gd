@@ -1,8 +1,10 @@
 extends Node2D
 
-# Simple NPC script for interaction and tutorial guidance
 func _ready() -> void:
-    pass
+    var sprite := Sprite2D.new()
+    sprite.texture = load("res://assets/npc.svg")
+    sprite.position = Vector2(-16, -16)
+    add_child(sprite)
 
 func _input(event):
     if event is InputEventMouseButton and event.pressed:
@@ -12,7 +14,7 @@ func _input(event):
 
 func show_dialog() -> void:
     var dlg := Label.new()
-    dlg.text = "Welcome, traveler. Your quest: defeat the Demon King. If confused, ask & create an issue."
+    dlg.text = "Welcome, traveler. The Demon King waits beyond the ruined gate."
     dlg.position = global_position + Vector2(-60, -50)
     dlg.add_theme_font_size_override("font_size", 14)
     get_tree().current_scene.add_child(dlg)

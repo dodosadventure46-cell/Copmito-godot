@@ -14,20 +14,19 @@ var patrol_max_x: float = 0.0
 func _ready() -> void:
     hp = max_hp
     add_to_group("enemies")
-    # If patrol bounds not set, use local position vicinity
     patrol_min_x = global_position.x - 120
     patrol_max_x = global_position.x + 120
 
+    var sprite := Sprite2D.new()
+    sprite.texture = load("res://assets/enemy.svg") if not is_boss else load("res://assets/boss.svg")
+    sprite.position = Vector2(-16, -16) if not is_boss else Vector2(-24, -24)
+    add_child(sprite)
+
 func _physics_process(delta: float) -> void:
-    # Simple patrol AI for non-boss; boss is slow-chasing
-    if is_boss:
-        # Chase player if exists
-        var player = get_tree().get_nodes_in_group("player")[0] if get_tree().get_nodes_in_group("player").size() > 0 else null
-        if player:
-            var dir = (player.global_position - global_position).normalized()
-            velocity = dir * (speed * 1.1)
-        else:
-            velocity = Vector2.ZERO
+    var player = get_tree().get_nodes_in_group("player")[0] if get_tree().get_nodes_in_group("player").size() > 0 else null
+    if is_boss and player:
+        var dir = (player.global_position - global_position).normalized()
+        velocity = dir * (speed * 1.1)
     else:
         if global_position.x < patrol_min_x:
             patrol_dir = 1
